@@ -28,156 +28,143 @@ The project is a high-performance monorepo built with **NPM workspaces**. This s
 ### Detailed Package Breakdown
 
 #### 🔐 `packages/circuits`
-This is the cryptographic heart of the system.
+This is the cryptographic heart of the system, where privacy is born.
 
 *   **Technology**: **Circom & SnarkJS**.
 *   **Circuit**: `BidCompliance.circom`.
 *   **Proof System**: **Groth16** over the `bn128` curve.
-*   **Functionality**: It takes a private bid price and a public budget range (`min`, `max`) as inputs. It outputs a `proof` and `publicSignals` (the Poseidon hash of the bid and the budget range). The proof confirms the bid is within the budget without revealing the price.
-*   **Why Circom?**: Circom is the industry standard for writing arithmetic circuits. Its DSL is expressive and specifically designed for ZK-proofs, and its ecosystem (SnarkJS) provides the tools for in-browser proof generation and verification.
+*   **Hashing**: **Poseidon**, a ZK-friendly hash function.
+*   **Why these technologies?**:
+    *   **Circom** is the industry standard for writing arithmetic circuits. Its domain-specific language (DSL) is perfectly suited for defining the complex constraints of a ZK-proof.
+    *   **Groth16** is chosen for its significant advantages: it produces very small proofs and has extremely fast verification times. This is crucial for blockchain applications, as it translates directly to lower gas costs for users submitting bids.
+    *   **Poseidon** is used for hashing bid data within the circuit. Unlike standard hashes like Keccak256, Poseidon is designed to be "ZK-friendly," requiring far fewer constraints in a Circom circuit, which makes the proof generation process more efficient.
 
 #### 🏛 `packages/contracts`
-The on-chain persistence and logic layer.
+The on-chain persistence and logic layer; the single source of truth.
 
 *   **Technology**: **Solidity & Hardhat**.
-*   **Main Contract**: `TenderRWA.sol` (Real-World Asset). This contract manages the full lifecycle of a tender, from creation to awarding and fulfillment. It integrates the ZK verifier to validate bids.
-*   **Verifier Contract**: `Verifier.sol`. This is an auto-generated contract produced by `snarkjs`. Its sole purpose is to verify the Groth16 proofs submitted by bidders. It is highly gas-optimized.
-*   **Why Hardhat?**: Hardhat provides a robust, extensible, and fast environment for local development, testing, and deployment of Solidity smart contracts. Its integration with `ethers.js` and its rich plugin ecosystem make it ideal for a complex project like this.
+*   **Main Contract**: `TenderRWA.sol` (Real-World Asset). This contract tokenizes the procurement process, managing the full lifecycle of a tender as if it were a real-world asset on the blockchain.
+*   **Verifier Contract**: `Groth16Verifier.sol`. This is a highly-optimized, auto-generated contract from `snarkjs`. Its sole purpose is to verify the Groth16 proofs submitted by bidders, ensuring their bids are compliant without revealing the bid amount.
+*   **Why these technologies?**:
+    *   **Solidity** is the native language of the Ethereum Virtual Machine (EVM), making it the definitive choice for writing smart contracts on Creditcoin and other EVM-compatible chains.
+    *   **Hardhat** provides a complete local development environment. It compiles, tests, and deploys contracts. Its ability to run a persistent local blockchain node is the cornerstone of our simplified `dev.sh` workflow, ensuring a stable and predictable state for development.
 
 #### ⚙️ `packages/backend`
-The secure enterprise gateway.
+The secure enterprise gateway that connects the web to the blockchain.
 
 *   **Technology**: **NestJS, ethers.js, JWT**.
-*   **Authentication**: A mock JWT-based system (`accounts.txt`) simulates a real-world user database, assigning roles (NGO, SME) to wallet addresses.
-*   **Tender Module**: Provides REST endpoints for creating tenders, fetching tender data, and submitting ZK-signed bids. It acts as a trusted intermediary that validates proofs before broadcasting transactions to the Creditcoin network.
-*   **Security**: Hardened with **Helmet** (sets secure HTTP headers), **CORS** (restricts cross-origin requests), and follows standard API security best practices.
-*   **Why NestJS?**: NestJS brings a structured, modular architecture to Node.js, heavily inspired by Angular. This is critical for enterprise applications, as it enforces a clean separation of concerns (modules, controllers, services) and simplifies maintenance and scalability.
+*   **Functionality**: Provides a robust REST API for user authentication (simulated via JWT), tender management, and securely relaying ZK-proofs to the blockchain. It acts as a vital abstraction layer, simplifying frontend logic.
+*   **Security**: Hardened with **Helmet** (sets secure HTTP headers) and **CORS** (restricts cross-origin requests).
+*   **Why these technologies?**:
+    *   **NestJS** brings a structured, modular architecture (inspired by Angular) to Node.js. For an enterprise-grade application, this is non-negotiable. It enforces a clean separation of concerns and uses Dependency Injection, which makes the codebase highly testable, maintainable, and scalable.
+    *   **ethers.js** is a complete and compact library for interacting with the Ethereum blockchain. It is the modern standard for connecting a backend application to smart contracts.
 
 #### 🌐 `packages/frontend`
-The user-facing portal for all procurement activities.
+The user-facing portal where all procurement activities happen.
 
 *   **Technology**: **Next.js 14, React, ethers.js, SnarkJS**.
-*   **ZK Bidding Portal**: The most critical feature. It uses `snarkjs` with WASM artifacts (generated from the circuit) to create ZK-proofs *directly in the user's browser*. This is paramount for privacy, as the raw bid price never leaves the client machine.
-*   **UI/UX**: A premium, enterprise-grade dark-navy theme with glassmorphism effects. It provides real-time status tracking of tenders and on-chain activities.
-*   **Why Next.js?**: Next.js offers the best of both worlds: the power of React for building dynamic UIs, combined with server-side rendering (SSR) and static site generation (SSG) for performance. Its file-based routing and API routes are perfect for building a full-featured web application.
+*   **Core Feature**: The ZK Bidding Portal. It uses `snarkjs` with WebAssembly (WASM) artifacts to generate ZK-proofs *directly in the user's browser*. This is the platform's core privacy feature, as the raw bid price never leaves the client's machine.
+*   **Why these technologies?**:
+    *   **Next.js** provides a world-class React framework. It enables a powerful combination of server-side rendering (for fast initial page loads) and client-side interactivity, which is essential for a responsive user experience.
+    *   **Client-Side Proof Generation** is a deliberate security choice. By generating proofs in the browser, we eliminate the need to trust the server with sensitive bid data, providing maximum privacy and security to the user.
 
 #### 🔍 `packages/developer-explorer`
 A dedicated tool for transparency and debugging.
 
 *   **Technology**: **Vite & React**.
-*   **Functionality**: Provides a real-time view of blocks and transactions on the connected blockchain (e.g., a local Hardhat node). It allows developers to inspect the internal state of the `TenderRWA` and `Verifier` contracts.
-*   **Why Vite?**: For a developer tool, speed is key. Vite offers a lightning-fast development experience with near-instant hot module replacement (HMR), making it the ideal choice for this lightweight explorer.
+*   **Functionality**: Provides a real-time, simplified view of blocks and transactions on the local Hardhat blockchain. It's an indispensable tool for developers to see the immediate on-chain results of their actions.
+*   **Why these technologies?**:
+    *   **Vite** offers a lightning-fast development server with near-instant Hot Module Replacement (HMR). For a developer-focused tool like this, a rapid and responsive development cycle is paramount, and Vite is the best-in-class solution.
 
 ---
 
-## 🚀 Deployment & Operational Guide
+## 🚀 Getting Started: The One-Command Launch
+
+This project uses a "smart" startup script that automates the entire setup process.
 
 ### 1. Prerequisites
 *   **Node.js**: `v18.x` or higher.
-*   **NPM**: `v9.x` or higher (for workspace support).
-*   **Circom**: *(Optional)* Required only if you intend to modify and recompile the ZK circuits. Install via `npm install -g circom`.
+*   **NPM**: `v9.x` or higher (for monorepo workspace support).
 
 ### 2. Initial Setup
-Clone the repository and install all dependencies from the root directory. NPM workspaces will automatically link the packages.
+Clone the repository and install all dependencies from the root directory. NPM workspaces will automatically handle the linking of all local packages.
 
 ```bash
 git clone <repository_url>
-cd cryptographic-tender-monorepo
+cd <repository_name>
 npm install
 ```
 
-### 3. ZK Circuit Compilation & Trusted Setup
-This step generates the cryptographic artifacts required for proof generation and verification. It only needs to be run once, or whenever the circuit logic in `packages/circuits/BidCompliance.circom` is changed.
+### 3. Automated Workflow (Recommended)
 
+The platform provides two primary scripts to manage the lifecycle of the environment:
+
+#### A. Initial System Setup (`setup.sh`)
+This is a one-time script that prepares the environment for the first time. It is **idempotent** and handles:
+- **ZK Trusted Setup**: Generates cryptographic keys and verifier contracts.
+- **State Initialization**: Cleans any stale blockchain data.
+- **Mock Seeding**: Deploys contracts and seeds the network with exactly 29 blocks of mock data (5 tenders, 22 bids).
+
+```bash
+./setup.sh
+```
+
+#### B. Daily Development (`dev.sh`)
+This script is used for regular development. It ensures the environment is always ready by:
+- **Port Management**: Terminates any orphaned node processes.
+- **Node Sync**: Automatically re-seeds the blockchain if the node starts in a fresh/empty state.
+- **Service Orchestration**: Parallelly launches the Frontend, Backend, and Developer Explorer.
+
+```bash
+./dev.sh
+```
+
+### 4. Application Access
+Once active, the platform is accessible at:
+- **Dashboard**: [http://localhost:3000](http://localhost:3000)
+- **Explorer**: [http://localhost:3001](http://localhost:3001)
+- **Backend API**: [http://localhost:3002](http://localhost:3002)
+
+---
+
+## 🛠 Manual Setup Guide
+
+For developers who require granular control or wish to debug specific components:
+
+### 1. ZK Circuit Compilation
+Navigate to the circuits package and initialize the cryptographic primitives.
 ```bash
 cd packages/circuits
-
-# 1. Compile the circuit
-# This generates the R1CS constraint system and the WASM witness calculator.
+npm install
 npm run compile
-
-# 2. Perform the Trusted Setup
-# This generates the proving key, verification key, and the Verifier.sol contract.
-# It uses the "Powers of Tau" ceremony for security.
 bash setup_zk.sh
 ```
-**Note**: The `setup_zk.sh` script automatically copies the generated `Verifier.sol` into the `packages/contracts` directory, ensuring the on-chain component is always in sync with the circuit.
 
-### 4. Smart Contract Deployment
-Deploy the contracts to a local network or a public testnet.
-
+### 2. Smart Contract Deployment
+Start the local Hardhat node and deploy the TenderRWA ecosystem.
 ```bash
+# Terminal 1
 cd packages/contracts
-
-# 1. Start a local blockchain node
-# This provides a sandboxed EVM environment for testing.
 npx hardhat node
 
-# 2. Deploy the contracts (in a separate terminal)
-# This script deploys TenderRWA.sol and the Verifier.sol.
-npx hardhat run scripts/deploy_zk.ts --network localhost
-```
-After deployment, contract addresses will be printed to the console. These need to be copied into the backend and frontend configuration for proper connectivity.
-
-### 5. Manual Execution Guide
-
-For more granular control, you can run each service manually. Open a new terminal for each command.
-
-**Terminal 1: Start the Local Blockchain**
-
-This command starts a local, in-memory blockchain instance using Hardhat, which is essential for development and testing.
-
-```bash
-# Navigate to the contracts package
+# Terminal 2
 cd packages/contracts
-
-# Start the Hardhat node
-npx hardhat node
+npx hardhat deploy --network localhost
+npx hardhat seed --network localhost
 ```
 
-**Terminal 2: Deploy Smart Contracts**
-
-Once the node is running, deploy the `TenderRWA` and `Verifier` contracts to the local network.
-
+### 3. Starting Platform Services
+Services can be started individually using NPM workspaces from the project root:
 ```bash
-# Navigate to the contracts package
-cd packages/contracts
+# Start the Backend (Port 3002)
+npm run start:dev --workspace=@procurement/backend
 
-# Deploy the contracts
-npx hardhat run scripts/deploy_zk.ts --network localhost
+# Start the Frontend (Port 3000)
+npm run dev --workspace=@procurement/frontend
+
+# Start the Explorer (Port 3001)
+npm run dev --workspace=developer-explorer -- --port 3001
 ```
-
-**Terminal 3: Start the Backend Server**
-
-The NestJS backend acts as the API gateway, connecting the frontend to the blockchain.
-
-```bash
-# From the project root
-npm run start:backend
-```
-
-**Terminal 4: Start the Frontend Application**
-
-This command launches the Next.js user dashboard.
-
-```bash
-# From the project root
-npm run start:frontend
-```
-
-**Terminal 5: Start the Developer Explorer**
-
-This lightweight block explorer allows you to monitor on-chain activity in real-time.
-
-```bash
-# From the project root
-npm run start:explorer
-```
-
-Once all services are running, you can access the applications at their respective ports:
-*   **Main Dashboard**: `http://localhost:3000`
-*   **Developer Explorer**: `http://localhost:3001`
-*   **Backend API**: `http://localhost:3002`
 
 ---
 
@@ -186,4 +173,4 @@ Once all services are running, you can access the applications at their respecti
 *   **Privacy by Default**: The system is architected to minimize data exposure. The core principle is that no sensitive information (like a bid price) should be revealed unless cryptographically necessary.
 *   **Client-Side Proof Generation**: ZK-proofs are generated in the browser. This is a critical security measure. The user's raw bid data never touches the backend server, mitigating the risk of server-side compromises.
 *   **Immutability as a Feature**: The blockchain's immutability is leveraged to create a permanent, unchangeable record of all procurement activities, ensuring accountability for all participants.
-*   **Gas Efficiency**: The `Verifier.sol` contract is highly optimized for gas, as it is the most frequently called on-chain component. The Groth16 proof system is chosen for its small proof size and efficient verification.
+*   **Gas Efficiency**: The `Groth16Verifier.sol` contract is highly optimized for gas, as it is the most frequently called on-chain component. The Groth16 proof system is chosen for its small proof size and efficient verification.
